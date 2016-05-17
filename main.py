@@ -1,3 +1,15 @@
+"""
+NFCBeer
+
+Usage:
+ nfcbeer.py client <id>
+ nfcbeer.py server
+ nfcbeer.py [-h | --help]
+
+Options:
+ -h --help      Shows help
+"""
+from docopt import docopt
 import time
 # import RPi.GPIO as GPIO
 import random
@@ -86,34 +98,47 @@ class FlowControl(object):
     def _debug_dump(self):
         print "DBG: TOTAL: ", self.total, "Servei:", self.service
 
+
+
+class BeerControl(object):
+    """Control KEG"""
+    def __init__(self):
+        super(BeerControl, self).__init__()
+
+    def run(self):
+        nf = FakeNFCReader()
+        fl = FlowControl(nfc=nf)
+
+        # GPIO.setmode(GPIO.BCM) # use real GPIO numbering
+        # GPIO.setup(22,GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        # GPIO.add_event_detect(22, GPIO.RISING, callback=fl.update, bouncetime=20)
+
+
+        random.seed(1)
+        c = 0
+        try:
+            while True:
+                a = random.random()
+                if a < 0.3:
+                    fl.update(1)
+
+                if a < 0.009:
+                    time.sleep(0.550)
+
+                time.sleep(0.002)
+                c += 1
+                if c > 1000:
+                    c = 0
+                    fl._debug_dump()
+        except Exception as e:
+            print e
+        finally:
+            # GPIO.cleanup()
+            pass
+
+
 if __name__ == "__main__":
-
-    nf = FakeNFCReader()
-    fl = FlowControl(nfc=nf)
-
-    # GPIO.setmode(GPIO.BCM) # use real GPIO numbering
-    # GPIO.setup(22,GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    # GPIO.add_event_detect(22, GPIO.RISING, callback=fl.update, bouncetime=20)
-
-
-    random.seed(1)
-    c = 0
-    try:
-        while True:
-            a = random.random()
-            if a < 0.3:
-                fl.update(1)
-
-            if a < 0.009:
-                time.sleep(0.550)
-
-            time.sleep(0.002)
-            c += 1
-            if c > 1000:
-                c = 0
-                fl._debug_dump()
-    except Exception as e:
-        print e
-    finally:
-        # GPIO.cleanup()
-        pass
+    arguments = docopt(doc=__doc__, version="NFCBEER 1.0")
+    print arguments
+    c = BeerControl()
+    c.run()
