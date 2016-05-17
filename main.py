@@ -61,13 +61,14 @@ class FakeNFCReader(object):
 
 class FlowControl(object):
     """Controlling FlowControl"""
-    def __init__(self, nfc=None):
+    def __init__(self, nfc=None, server=None):
         super(FlowControl, self).__init__()
         self.previousTime = 0
         self.service = 0
         self.total = 0
         self.user = -2
         self.nfc = nfc
+        self.server = server
 
     def _get_user(self):
         if self.nfc is not None:
@@ -89,6 +90,7 @@ class FlowControl(object):
             if self.user != -2:
                 print "+"
                 print "user", self.user, " drank ", self.service
+                self.server.update_score("1",self.user,self.service)
             # Guardar a usuari self.service
             self.service = 0
             self.user = self._get_user()
@@ -98,16 +100,35 @@ class FlowControl(object):
     def _debug_dump(self):
         print "DBG: TOTAL: ", self.total, "Servei:", self.service
 
+class BeerServer(object):
+    """Server"""
+    def __init__(self):
+        super(BeerServer, self).__init__()
+        self.scores = {}
 
+    def update_score(self,kegnum,user,beer):
+        self.scores[user] = self.scores.get(user, 0.0) + float(beer)
+
+    def print_leaderboard(self):
+        print "*" * 40
+        for s in self.scores:
+            print s, " has drank ", self.scores[s], " L"
+        print "*" * 40
+
+    def run_loop(self):
+        while True:
+            r = receive()
+            self.update_score(r)
 
 class BeerControl(object):
     """Control KEG"""
     def __init__(self):
         super(BeerControl, self).__init__()
+        self.server=BeerServer()
 
     def run(self):
         nf = FakeNFCReader()
-        fl = FlowControl(nfc=nf)
+        fl = FlowControl(nfc=nf,server=self.server)
 
         # GPIO.setmode(GPIO.BCM) # use real GPIO numbering
         # GPIO.setup(22,GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -130,6 +151,7 @@ class BeerControl(object):
                 if c > 1000:
                     c = 0
                     fl._debug_dump()
+                    self.server.print_leaderboard()
         except Exception as e:
             print e
         finally:
@@ -140,5 +162,6 @@ class BeerControl(object):
 if __name__ == "__main__":
     arguments = docopt(doc=__doc__, version="NFCBEER 1.0")
     print arguments
-    c = BeerControl()
-    c.run()
+    if arguments["client"]:
+        c = BeerControl()
+        c.run()
